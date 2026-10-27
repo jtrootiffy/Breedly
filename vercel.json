@@ -2,13 +2,11 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
-      "comment": "Proxy the CORS-restricted upstream API. The frontend calls /api/bhs/*, which is rewritten to https://breedhealthscore.com/api/*. Never rewritten to index.html.",
       "source": "/api/bhs/:path*",
       "destination": "https://breedhealthscore.com/api/:path*"
     },
     {
-      "comment": "SPA fallback: send application routes (including /breeds, /breeds/:slug and /compare) to index.html so direct navigation and refresh work. Static assets are served from disk and are excluded here.",
-      "source": "/((?!api/|assets/|favicon\\.svg|icons\\.svg|robots\\.txt|sitemap\\.xml).*)",
+      "source": "/((?!api/|assets/|favicon\\.svg|robots\\.txt|sitemap\\.xml).*)",
       "destination": "/index.html"
     }
   ]
