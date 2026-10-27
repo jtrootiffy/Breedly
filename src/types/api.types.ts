@@ -1,106 +1,59 @@
 /**
- * API Types for Breed Health Score
- * https://breedhealthscore.com
+ * Raw shapes returned by the Breed Health Score API (https://breedhealthscore.com).
+ *
+ * Every field is optional because the API is an external dependency: a schema change
+ * or a partial record must never crash the UI. `src/utils/normalize.ts` turns these
+ * loose payloads into the strict `Breed` domain model used by the components.
  */
 
-// Breed list item from /api/breeds.json
-export interface BreedListItem {
-  breed: string;
-  slug: string;
-  url: string;
-  median_lifespan_years: number;
-  size: 'tiny' | 'small' | 'medium' | 'large' | 'giant';
-  brachycephalic: boolean;
-  conditions: string[];
-  severe_count: number;
-  health_score: number;
-  grade: 'A' | 'B' | 'C' | 'D' | 'E';
-  components: {
-    longevity: number;
-    conformation: number;
-    burden: number;
-  };
-  image?: {
-    url: string;
-    photographer: string;
-    source: string;
-  };
+export interface ApiBreedImage {
+  url?: string
+  photographer?: string
+  source?: string
 }
 
-// Breed detail from /api/v1/breeds/{slug}.json
-export interface BreedDetail {
-  breed: string;
-  slug: string;
-  url: string;
-  median_lifespan_years: number;
-  size: 'tiny' | 'small' | 'medium' | 'large' | 'giant';
-  weight_kg?: string;
-  brachycephalic: boolean;
-  conditions: string[];
-  health_score: number;
-  grade: 'A' | 'B' | 'C' | 'D' | 'E';
-  components: {
-    longevity: number;
-    conformation: number;
-    burden: number;
-  };
-  image?: {
-    url: string;
-    photographer: string;
-    source: string;
-  };
+export interface ApiScoreComponents {
+  longevity?: number | null
+  conformation?: number | null
+  burden?: number | null
 }
 
-// Health grade colors mapping based on API grading
-export type HealthGrade = 'A' | 'B' | 'C' | 'D' | 'E';
-
-export interface GradeColors {
-  background: string;
-  text: string;
-  border: string;
+export interface ApiBreed {
+  breed?: string
+  slug?: string
+  url?: string
+  median_lifespan_years?: number | null
+  size?: string | null
+  weight_kg?: string | null
+  brachycephalic?: boolean | null
+  conditions?: string[]
+  severe_count?: number | null
+  health_score?: number | null
+  grade?: string | null
+  components?: ApiScoreComponents | null
+  image?: ApiBreedImage | null
 }
 
-// Sort options for the breed explorer
-export type SortOption = 'health-score-desc' | 'health-score-asc' | 'lifespan-desc' | 'lifespan-asc' | 'alphabetical';
-
-// Filter options
-export interface BreedFilters {
-  searchTerm: string;
-  size?: 'tiny' | 'small' | 'medium' | 'large' | 'giant';
-  healthGrade?: 'A' | 'B' | 'C' | 'D' | 'E';
-  brachycephalic?: boolean | null;
+/** Metadata envelope shared by every endpoint. */
+export interface ApiEnvelope {
+  dataset?: string
+  api_version?: string
+  licence?: string
+  source?: string
+  source_url?: string
+  attribution?: string
+  docs?: string
+  openapi?: string
 }
 
-// Sort configuration
-export interface SortConfig {
-  field: keyof BreedListItem;
-  direction: 'asc' | 'desc';
+/** `GET /api/breeds.json` */
+export interface ApiBreedsResponse extends ApiEnvelope {
+  total?: number
+  count?: number
+  breeds?: ApiBreed[]
 }
 
-// Pagination state
-export interface PaginationState {
-  page: number;
-  pageSize: number;
-  total: number;
-}
-
-// API error type
-export interface ApiError {
-  message: string;
-  type: 'network' | 'http' | 'parse' | 'validation';
-}
-
-// Loader state
-export type LoaderState = 'idle' | 'loading' | 'error' | 'empty';
-
-// Comparison state
-export interface SelectedBreed {
-  slug: string;
-  name: string;
-  healthScore: number;
-  grade: HealthGrade;
-  medianLifespan: number;
-  size: string;
-  brachycephalic: boolean;
-  conditions: string[];
+/** `GET /api/v1/breeds/{slug}.json` */
+export interface ApiBreedDetailResponse extends ApiEnvelope {
+  breed?: ApiBreed
 }

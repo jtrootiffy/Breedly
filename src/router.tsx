@@ -1,42 +1,27 @@
-import { createBrowserRouter, createRoutesFromElements, RouterProvider, Route } from 'react-router-dom'
-
-import LandingPage from '@/pages/LandingPage'
-import BreedExplorer from '@/pages/BreedExplorer'
+import { createBrowserRouter } from 'react-router-dom'
+import AppLayout from '@/components/AppLayout'
+import About from '@/pages/About'
 import BreedDetails from '@/pages/BreedDetails'
+import BreedExplorer from '@/pages/BreedExplorer'
 import CompareBreeds from '@/pages/CompareBreeds'
+import LandingPage from '@/pages/LandingPage'
+import NotFound from '@/pages/NotFound'
 
+/**
+ * `/` is the landing page and the first screen users see.
+ * Every route renders inside the shared layout (navigation + footer).
+ */
 export const router = createBrowserRouter([
-  // Landing page - the first screen users see
   {
     path: '/',
-    element: <LandingPage />,
-    errorElement: () => <div>Error loading page</div>,
-  },
-
-  // Breed explorer page
-  {
-    path: '/breeds',
-    element: <BreedExplorer />,
-    errorElement: () => <div>Error loading page</div>,
-  },
-
-  // Breed details page - uses dynamic segment :slug
-  {
-    path: '/breeds/:slug',
-    element: <BreedDetails />,
-    errorElement: () => <div>Error loading page</div>,
-  },
-
-  // Breed comparison page
-  {
-    path: '/compare',
-    element: <CompareBreeds />,
-    errorElement: () => <div>Error loading page</div>,
-  },
-
-  // Fallback - redirect to landing page
-  {
-    path: '*',
-    element: <LandingPage />,
+    element: <AppLayout />,
+    children: [
+      { index: true, element: <LandingPage /> },
+      { path: 'breeds', element: <BreedExplorer /> },
+      { path: 'breeds/:slug', element: <BreedDetails /> },
+      { path: 'compare', element: <CompareBreeds /> },
+      { path: 'about', element: <About /> },
+      { path: '*', element: <NotFound /> },
+    ],
   },
 ])

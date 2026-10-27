@@ -1,172 +1,101 @@
+@import 'tailwindcss';
+
 /*
-  Tailwind CSS Breakpoints and Base Styles for Breedly
-  Brand Colors: #80A1C1 (blue), #EEE3AB (cream), #07B07B (emerald)
+  Breedly design tokens.
+  Brand colours are fixed by the brief: blue #80A1C1, cream #EEE3AB, emerald #07B07B.
+  Declaring them in @theme (Tailwind v4) exposes them as utilities such as
+  `bg-brand-blue`, `text-brand-emerald`, `border-brand-cream`, ...
 */
+@theme {
+  --color-brand-blue: #80a1c1;
+  --color-brand-blue-strong: #5f83a6;
+  --color-brand-blue-soft: #e8eff5;
+  --color-brand-cream: #eee3ab;
+  --color-brand-cream-soft: #f7f2d9;
+  --color-brand-emerald: #07b07b;
+  --color-brand-emerald-strong: #058a61;
+  --color-brand-emerald-soft: #e2f6ee;
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+  /* Warm neutrals used for the page canvas and borders */
+  --color-sand-50: #fcfaf4;
+  --color-sand-100: #f7f1e4;
+  --color-sand-200: #efe6d2;
+  --color-sand-300: #e2d5b9;
 
-/* Custom base styles */
-:root {
-  --bg: #fafafa;
-  --text: #1f2937;
-  --muted: #6b7280;
-  --border: #e5e7eb;
+  --color-ink-600: #55606d;
+  --color-ink-700: #3d4854;
+  --color-ink-800: #2a333e;
+  --color-ink-900: #1b222a;
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial,
+    sans-serif;
+  --font-display:
+    'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, 'Times New Roman', serif;
+
+  --shadow-card: 0 1px 2px rgb(27 34 42 / 0.04), 0 8px 24px -12px rgb(27 34 42 / 0.12);
+  --shadow-card-hover: 0 2px 4px rgb(27 34 42 / 0.06), 0 18px 40px -16px rgb(27 34 42 / 0.22);
+
+  --animate-fade-up: fade-up 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
 }
 
-/* Brand color utilities */
-.bg-brand-cream {
-  background-color: #EEE3AB;
-}
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
 
-.bg-brand-blue {
-  background-color: #80A1C1;
-}
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: var(--color-sand-50);
+    color: var(--color-ink-800);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-.bg-brand-emerald {
-  background-color: #07B07B;
-}
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    color: var(--color-ink-900);
+    text-wrap: balance;
+  }
 
-.text-brand-cream {
-  color: #EEE3AB;
-}
+  p {
+    text-wrap: pretty;
+  }
 
-.text-brand-blue {
-  color: #80A1C1;
-}
+  :focus-visible {
+    outline: 2px solid var(--color-brand-blue-strong);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
 
-.text-brand-emerald {
-  color: #07B07B;
-}
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
 
-/* Grade color utilities */
-.bg-grade-A {
-  background-color: #22c55e;
-  color: white;
-}
-
-.bg-grade-B {
-  background-color: #84cc16;
-  color: white;
-}
-
-.bg-grade-C {
-  background-color: #eab308;
-  color: #1f2937;
-}
-
-.bg-grade-D {
-  background-color: #f59e0b;
-  color: #1f2937;
-}
-
-.bg-grade-E {
-  background-color: #ef4444;
-  color: white;
-}
-
-/* Card styles */
-.card {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.08);
-}
-
-/* Button styles */
-.btn-primary {
-  background-color: #07B07B;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 6px;
-  font-weight: 500;
-  transition: background-color 0.2s ease;
-}
-
-.btn-primary:hover {
-  background-color: #08d08d;
-}
-
-.btn-primary:focus-visible {
-  outline: 2px solid #07B07B;
-  outline-offset: 2px;
-}
-
-.btn-secondary {
-  background-color: #80A1C1;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 6px;
-  font-weight: 500;
-  transition: background-color 0.2s ease;
-}
-
-.btn-secondary:hover {
-  background-color: #6a8da8;
-}
-
-.btn-secondary:focus-visible {
-  outline: 2px solid #80A1C1;
-  outline-offset: 2px;
-}
-
-.btn-outline {
-  background: transparent;
-  color: #80A1C1;
-  border: 2px solid #80A1C1;
-  padding: 10px 20px;
-  border-radius: 6px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
-
-.btn-outline:hover {
-  background-color: #80A1C1;
-  color: white;
-}
-
-.btn-outline:focus-visible {
-  outline: 2px solid #80A1C1;
-  outline-offset: 2px;
-}
-
-/* Empty state */
-.empty-state {
-  text-align: center;
-  padding: 40px 20px;
-  color: #6b7280;
-}
-
-/* Loading skeleton */
-.skeleton {
-  background: #f0f0f0;
-  border-radius: 4px;
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-/* Focus visible */
-*:focus-visible {
-  outline: 2px solid #80A1C1;
-  outline-offset: 2px;
-}
-
-/* Reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0ms !important;
-    transition-duration: 0ms !important;
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
   }
 }

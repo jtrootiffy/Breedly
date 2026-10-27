@@ -1,109 +1,192 @@
 /**
- * Breed Health Score API Service
- * Fetches dog breed health data from https://breedhealthscore.com
- * 
- * License: CC BY 4.0 - attribution required
- * Source: McMillan, K.M. et al. (2024) "Longevity of companion dog breeds", Scientific Reports
+ * Breed Health Score API service.
+ *
+ * Data: https://breedhealthscore.com (CC BY 4.0). Lifespan figures come from
+ * McMillan et al. 2024, "Longevity of companion dog breeds", Scientific Reports.
+ *
+ * ## Why requests go to a same-origin path
+ * The upstream API answers plain requests but does not send `Access-Control-Allow-Origin`,
+ * so a cross-origin `fetch` from a browser is blocked by CORS. This module therefore
+ * targets a same-origin prefix (`/api/bhs` by default) that is forwarded to the real API
+ * by the Vite dev/preview proxy (vite.config.ts) and by a rewrite on Vercel
+ * (vercel.json). The upstream stays the only data source — nothing is mocked or cached
+ * as fake data. Set `VITE_API_BASE` to point somewhere else if you host the proxy
+ * differently.
  */
 
-import type { BreedListItem, BreedDetail } from '../types/api.types';
+import type { ApiBreedDetailResponse, ApiBreedsResponse } from '@/types/api.types'
+import type { Breed } from '@/types/breed.types'
+import { normalizeBreed } from '@/utils/normalize'
 
-// Base API configuration
-const API_BASE = 'https://breedhealthscore.com';
-const BREEDS_ENDPOINT = '/api/breeds.json';
-const BREED_DETAIL_ENDPOINT = '/api/v1/breeds';
+const RAW_BASE = import.meta.env.VITE_API_BASE ?? '/api/bhs'
+const API_BASE = RAW_BASE.replace(/\/+$/, '')
 
-// Cache for breed details to avoid repeated fetches
-const detailCache = new Map<string, BreedDetail>();
+const REQUEST_TIMEOUT_MS = 15_000
 
-/**
- * Fetches the list of all breeds from the API
- */
-export async function fetchBreedsList(): Promise<BreedListItem[]> {
-  const response = await fetch(`${API_BASE}${BREEDS_ENDPOINT}`);
+export type ApiErrorKind = 'network' | 'timeout' | 'http' | 'parse' | 'validation'
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch breeds: ${response.status} ${response.statusText}`);
+/** Error type that carries enough detail for the UI to explain what went wrong. */
+export class ApiError extends Error {
+  readonly kind: ApiErrorKind
+  readonly status?: number
+
+  constructor(kind: ApiErrorKind, message: string, status?: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.kind = kind
+    this.status = status
   }
-
-  const data = await response.json();
-
-  // Handle the envelope structure: { dataset, api_version, ..., breeds: [...] }
-  if (!data || !Array.isArray(data.breeds)) {
-    throw new Error('Invalid API response format: missing breeds array');
-  }
-
-  return data.breeds;
 }
 
-/**
- * Fetches detailed information for a specific breed by slug
- * 
- * @param slug The breed slug (e.g., 'caucasian-shepherd-dog')
- * @returns Breed detail object
- */
-export async function fetchBreedDetail(slug: string): Promise<BreedDetail> {
-  // Check cache first
-  if (detailCache.has(slug)) {
-    return detailCache.get(slug)!;
-  }
-
-  const response = await fetch(`${API_BASE}${BREED_DETAIL_ENDPOINT}/${slug}.json`);
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch breed detail for ${slug}: ${response.status} ${response.statusText}`);
-  }
-
-  const data = await response.json();
-
-  // Handle the breed detail envelope structure
-  if (!data || !data.breed) {
-    throw new Error('Invalid breed detail API response format');
-  }
-
-  const detail: BreedDetail = data.breed;
-
-  // Cache the result
-  detailCache.set(slug, detail);
-
-  return detail;
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError'
 }
 
-/**
- * Clears the breed detail cache
- */
-export function clearBreedDetailCache(): void {
-  detailCache.clear();
-}
+async function requestJson<T>(path: string, signal?: AbortSignal): Promise<T> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  const forwardAbort = () => controller.abort()
+  signal?.addEventListener('abort', forwardAbort, { once: true })
 
-/**
- * Checks if the API supports CORS for browser requests
- */
-export async function checkCORS(): Promise<boolean> {
+  const url = `${API_BASE}/${path.replace(/^\/+/, '')}`
+
+  let response: Response
   try {
-    const response = await fetch(`${API_BASE}/api/v1/openapi.json`, {
-      method: 'HEAD',
-      mode: 'cors',
-    });
-    return response.ok;
+    response = await fetch(url, {
+      headers: { Accept: 'application/json' },
+      signal: controller.signal,
+    })
+  } catch (error) {
+    // A caller-initiated abort is not an error the UI should display.
+    if (signal?.aborted) throw error
+    if (controller.signal.aborted) {
+      throw new ApiError('timeout', 'The Breed Health Score API took too long to respond.')
+    }
+    throw new ApiError(
+      'network',
+      'Could not reach the Breed Health Score API. Check your connection and try again.',
+    )
+  } finally {
+    clearTimeout(timer)
+    signal?.removeEventListener('abort', forwardAbort)
+  }
+
+  if (!response.ok) {
+    const suffix =
+      response.status === 404
+        ? 'That breed could not be found in the dataset.'
+        : 'The Breed Health Score API returned an error.'
+    throw new ApiError('http', `${suffix} (HTTP ${response.status})`, response.status)
+  }
+
+  try {
+    return (await response.json()) as T
   } catch {
-    return false;
+    throw new ApiError('parse', 'The Breed Health Score API returned an unreadable response.')
   }
 }
 
-/**
- * Gets the total number of breeds available in the API
- */
-export function getBreedCount(): number {
-  // The API reports 155 breeds, but we derive this from the actual data
-  // This is a fallback if the API is unavailable
-  return 155;
+/** Turns any thrown value into a message that is safe to show a user. */
+export function describeApiError(error: unknown): string {
+  if (error instanceof ApiError) return error.message
+  if (error instanceof Error && error.message) return error.message
+  return 'Something went wrong while loading breed data.'
 }
 
-export default {
-  fetchBreedsList,
-  fetchBreedDetail,
-  clearBreedDetailCache,
-  checkCORS,
-  getBreedCount,
-};
+export { isAbortError }
+
+/* ------------------------------------------------------------------ *
+ * In-memory caching. Avoids duplicate network calls for the same data.
+ * ------------------------------------------------------------------ */
+
+let breedsCache: Breed[] | null = null
+let breedsRequest: Promise<Breed[]> | null = null
+
+const breedDetailCache = new Map<string, Breed>()
+const breedDetailRequests = new Map<string, Promise<Breed>>()
+
+/**
+ * Loads the full breed catalog (`GET /api/breeds.json`).
+ * Concurrent callers share a single request, and the result is cached in memory.
+ */
+export function getBreeds(options: { force?: boolean } = {}): Promise<Breed[]> {
+  if (options.force) {
+    breedsCache = null
+    breedsRequest = null
+  }
+
+  if (breedsCache) return Promise.resolve(breedsCache)
+
+  if (!breedsRequest) {
+    breedsRequest = requestJson<ApiBreedsResponse>('breeds.json')
+      .then((payload) => {
+        if (!payload || !Array.isArray(payload.breeds)) {
+          throw new ApiError(
+            'validation',
+            'The Breed Health Score API did not return a list of breeds.',
+          )
+        }
+
+        const breeds = payload.breeds
+          .map(normalizeBreed)
+          .filter((breed) => breed.slug !== '')
+
+        if (breeds.length === 0) {
+          throw new ApiError('validation', 'The Breed Health Score API returned an empty list.')
+        }
+
+        breedsCache = breeds
+        return breeds
+      })
+      .catch((error: unknown) => {
+        breedsRequest = null // allow a later retry
+        throw error
+      })
+  }
+
+  return breedsRequest
+}
+
+/**
+ * Loads one breed (`GET /api/v1/breeds/{slug}.json`), with in-memory caching and
+ * de-duplication so the same breed is never fetched twice.
+ */
+export function getBreed(slug: string, options: { force?: boolean } = {}): Promise<Breed> {
+  const key = slug.trim()
+
+  if (!key) {
+    return Promise.reject(new ApiError('validation', 'No breed was specified.'))
+  }
+
+  if (options.force) {
+    breedDetailCache.delete(key)
+    breedDetailRequests.delete(key)
+  }
+
+  const cached = breedDetailCache.get(key)
+  if (cached) return Promise.resolve(cached)
+
+  const inFlight = breedDetailRequests.get(key)
+  if (inFlight) return inFlight
+
+  const request = requestJson<ApiBreedDetailResponse>(
+    `v1/breeds/${encodeURIComponent(key)}.json`,
+  )
+    .then((payload) => {
+      if (!payload || !payload.breed) {
+        throw new ApiError(
+          'validation',
+          `The Breed Health Score API did not return details for "${key}".`,
+        )
+      }
+      const breed = normalizeBreed(payload.breed)
+      breedDetailCache.set(key, breed)
+      return breed
+    })
+    .finally(() => {
+      breedDetailRequests.delete(key)
+    })
+
+  breedDetailRequests.set(key, request)
+  return request
+}

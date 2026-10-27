@@ -1,265 +1,241 @@
-import { useState } from 'react'
-import { Link, useNavigation } from 'react-router-dom'
-import { 
-  PawPrint, 
-  Search, 
-  Info, 
-  Heart, 
-  Shield,
-  TrendingUp
+import { Link } from 'react-router-dom'
+import {
+  ArrowRight,
+  HeartPulse,
+  Info,
+  ScanEye,
+  ShieldCheck,
+  Sparkles,
+  TrendingUp,
+  Wind,
 } from 'lucide-react'
+import BreedImage from '@/components/BreedImage'
+import SectionHeading from '@/components/SectionHeading'
+import AttributionNote from '@/components/AttributionNote'
+import { useBreeds } from '@/hooks/useBreeds'
+import { buttonClass } from '@/utils/ui'
 
-import { fetchBreedsList, getBreedCount } from '@/services/api.service'
-import type { BreedListItem } from '@/types/api.types'
+const HERO_IMAGES = [
+  { slug: 'labrador-retriever', alt: 'A Labrador Retriever looking toward the camera' },
+  { slug: 'beagle', alt: 'A Beagle with a calm, alert expression' },
+  { slug: 'french-bulldog', alt: 'A French Bulldog sitting outdoors' },
+]
 
-const NAV_LINKS = [
-  { path: '/', label: 'Home' },
-  { path: '/breeds', label: 'Explore Breeds' },
-  { path: '/about', label: 'About' },
+const FEATURES = [
+  {
+    icon: HeartPulse,
+    title: 'Health Scores',
+    body: 'A single 0–100 composite score for every breed, built from longevity (65%), conformation (20%) and hereditary burden (15%).',
+    iconClass: 'bg-brand-emerald-soft text-brand-emerald-strong',
+  },
+  {
+    icon: TrendingUp,
+    title: 'Lifespan Insights',
+    body: 'Median lifespan for each breed, taken from a study of 584,734 UK dogs published in Scientific Reports.',
+    iconClass: 'bg-brand-blue-soft text-brand-blue-strong',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Hereditary Conditions',
+    body: 'The conditions the dataset lists for a breed, so you can go into a conversation with a breeder or vet better prepared.',
+    iconClass: 'bg-brand-cream-soft text-ink-700',
+  },
 ]
 
 export default function LandingPage() {
-  const [breedsCount, setBreedsCount] = useState(0)
-  const [isLoading, setIsLoading] = useState(true)
-  const navigation = useNavigation()
-
-  useEffect(() => {
-    fetchBreedsList()
-      .then(breeds => {
-        setBreedsCount(breeds.length)
-      })
-      .finally(() => setIsLoading(false))
-  }, [])
-
-  const handleLinkClick = (e: React.MouseEvent) => {
-    e.preventDefault()
-    navigation.navigate(NAV_LINKS[1].path)
-  }
+  const { breeds, isLoading } = useBreeds()
+  const breedCount = breeds.length > 0 ? breeds.length : null
 
   return (
-    <div className="min-h-screen bg-brand-cream">
-      {/* Navigation */}
-      <nav className="border-b border-brand-blue/20 bg-brand-cream/80 backdrop-blur-sm fixed top-0 left-0 right-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center gap-2">
-            <PawPrint className="h-6 w-6 text-brand-emerald" />
-            <span className="text-xl font-bold text-brand-blue">Breedly</span>
-          </div>
-          
-          {/* Navigation links */}
-          <div className="hidden md:flex items-center gap-8">
-            {NAV_LINKS.map((link, index) => (
-              <Link
-                key={index}
-                to={link.path}
-                className={`
-                  text-sm font-medium transition-colors 
-                  ${navigation.state.location.pathname === link.path 
-                    ? 'text-brand-blue underline' 
-                    : 'text-gray-700 hover:text-brand-blue'}
-                `}
-                onClick={handleLinkClick}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </div>
-          
-          {/* Mobile menu button */}
-          <button 
-            className="md:hidden p-2"
-            aria-label="Open menu"
-          >
-            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path 
-                className="stroke-2 stroke-brand-blue" 
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            </svg>
-          </button>
-        </div>
-      </nav>
+    <div className="animate-fade-up">
+      {/* ---------------------------------------------------------------- Hero */}
+      <section className="mx-auto grid w-full max-w-7xl gap-12 px-4 pt-12 pb-16 sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:gap-16 lg:pt-20 lg:pb-24">
+        <div>
+          <p className="inline-flex items-center gap-2 rounded-full border border-brand-cream bg-brand-cream-soft px-4 py-1.5 text-xs font-semibold tracking-wide text-ink-700 uppercase">
+            <Sparkles className="h-3.5 w-3.5 text-brand-emerald-strong" aria-hidden="true" />
+            Better knowledge. Healthier, happier dogs.
+          </p>
 
-      {/* Hero Section */}
-      <header className="pt-20 pb-12 md:pb-24">
-        <div className="max-w-7xl mx-auto px-6">
-          {/* Hero Content */}
-          <div className="max-w-3xl text-center">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-brand-blue md:mb-4 lg:mb-6">
-              Every breed has a story. Know their health.
-            </h1>
-            <p className="text-lg md:text-xl text-gray-700 text-brand-cream md:mt-4 lg:mt-6 max-w-2xl mx-auto leading-relaxed">
-              Breedly helps you explore breed health scores, average lifespan estimates, breed characteristics, and hereditary conditions. 
-              Our data-driven insights come from a study of 155 dog breeds, giving you the knowledge to make informed decisions 
-              about your future companion—no account required.
-            </p>
-            
-            {/* CTA Buttons */}
-            <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/breeds" className="btn-primary text-lg font-medium">
-                Get Started
-              </Link>
-              <Link to="/breeds" className="btn-outline text-lg font-medium">
-                Explore Breeds
-              </Link>
-            </div>
-          </div>
+          <h1 className="mt-6 text-4xl leading-[1.08] sm:text-5xl lg:text-6xl">
+            Every breed has a story. Know their health.
+          </h1>
 
-          {/* Hero Illustration */}
-          <div className="mt-12 md:mt-24 flex justify-center">
-            <div className="relative w-full max-w-2xl">
-              <div className="aspect-video rounded-lg overflow-hidden bg-brand-blue/10">
-                <img 
-                  src="https://images.unsplash.com/photo-1518717757254-5d0faf1ce7b3?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
-                  alt="Happy golden retriever enjoying the outdoors"
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-              </div>
-              <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-brand-cream to-transparent">
-                <p className="text-sm text-gray-600">
-                  Photo: Unsplash
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+          <p className="mt-6 max-w-xl text-lg leading-relaxed text-ink-600">
+            Breedly helps you explore breed health scores, average lifespan estimates, breed
+            characteristics and hereditary conditions — so you can make a more informed decision
+            about the dog that fits your life.
+          </p>
 
-      {/* Know What Matters Section */}
-      <main className="py-20 pb-12 md:py-32">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            
-            {/* Health Scores Card */}
-            <div className="card p-6 rounded-xl border-l-4 bg-white border-brand-blue/30 hover:border-brand-blue/50 transition-colors">
-              <div className="flex items-start gap-4">
-                <Heart className="h-6 w-6 text-brand-emerald flex-shrink-0 mt-1" />
-                <div>
-                  <h3 className="text-xl font-semibold text-brand-blue">Health Scores</h3>
-                  <p className="text-gray-600 text-sm mt-1">
-                    Composite health scores comparing 155 breeds on conformation, longevity, and burden of hereditary conditions.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Lifespan Insights Card */}
-            <div className="card p-6 rounded-xl border-l-4 bg-white border-emerald-500/30 hover:border-emerald-500/50 transition-colors">
-              <div className="flex items-start gap-4">
-                <TrendingUp className="h-6 w-6 text-emerald-600 flex-shrink-0 mt-1" />
-                <div>
-                  <h3 className="text-xl font-semibold text-emerald-600">Lifespan Insights</h3>
-                  <p className="text-gray-600 text-sm mt-1">
-                    Median lifespan data from McMillan et al. (2024) — the largest study of dog longevity to date.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Hereditary Conditions Card */}
-            <div className="card p-6 rounded-xl border-l-4 bg-white border-gray-300 hover:border-brand-blue/50 transition-colors">
-              <div className="flex items-start gap-4">
-                <Shield className="h-6 w-6 text-gray-600 flex-shrink-0 mt-1" />
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-700">Hereditary Conditions</h3>
-                  <p className="text-gray-600 text-sm mt-1">
-                    Understanding common health conditions by breed to help you prepare and ask the right questions.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </main>
-
-      {/* Find Your Perfect Companion Section */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold text-brand-blue md:text-4xl mb-6">
-              Find Your Perfect Companion
-            </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
-              Take the first step toward a happier, healthier life together. 
-              Browse our complete breed catalog to find the right match for your lifestyle.
-            </p>
-            <Link to="/breeds" className="btn-primary text-lg font-medium">
-              Start Breed Exploration
+          <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+            <Link to="/breeds" className={buttonClass('primary', 'lg', 'w-full sm:w-auto')}>
+              Get Started
+              <ArrowRight className="h-5 w-5" aria-hidden="true" />
             </Link>
+            <Link to="/breeds" className={buttonClass('outline', 'lg', 'w-full sm:w-auto')}>
+              <ScanEye className="h-5 w-5" aria-hidden="true" />
+              Explore Breeds
+            </Link>
+          </div>
+
+          <ul className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-ink-600">
+            <li className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-brand-emerald" aria-hidden="true" />
+              {isLoading ? (
+                <span className="text-ink-600">Loading breed count…</span>
+              ) : breedCount !== null ? (
+                <span>
+                  <strong className="font-semibold text-ink-800">{breedCount} dog breeds</strong>{' '}
+                  covered
+                </span>
+              ) : (
+                <span>Breed health dataset</span>
+              )}
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-brand-blue" aria-hidden="true" />
+              Data-driven insights
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-brand-cream" aria-hidden="true" />
+              No account required
+            </li>
+          </ul>
+        </div>
+
+        <div className="relative">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2 aspect-[16/9] overflow-hidden rounded-3xl shadow-card">
+              <BreedImage slug={HERO_IMAGES[0].slug} alt={HERO_IMAGES[0].alt} priority />
+            </div>
+            <div className="aspect-square overflow-hidden rounded-3xl shadow-card">
+              <BreedImage slug={HERO_IMAGES[1].slug} alt={HERO_IMAGES[1].alt} priority />
+            </div>
+            <div className="aspect-square overflow-hidden rounded-3xl shadow-card">
+              <BreedImage slug={HERO_IMAGES[2].slug} alt={HERO_IMAGES[2].alt} priority />
+            </div>
+          </div>
+          <p className="mt-4 text-center text-xs text-ink-600">
+            Breed photography from the Breed Health Score dataset (Pexels).
+          </p>
+        </div>
+      </section>
+
+      {/* --------------------------------------------------- Know what matters */}
+      <section className="border-y border-sand-300 bg-brand-cream">
+        <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:py-20">
+          <SectionHeading
+            eyebrow="Know what matters"
+            title="Three things worth understanding before you choose"
+            description="Breedly pulls one consistent dataset into a view that answers the questions people actually ask."
+            align="center"
+          />
+
+          <ul className="mt-12 grid gap-6 md:grid-cols-3">
+            {FEATURES.map((feature) => (
+              <li
+                key={feature.title}
+                className="rounded-3xl border border-sand-200 bg-white p-6 shadow-card transition-transform duration-300 hover:-translate-y-1"
+              >
+                <span
+                  className={`flex h-12 w-12 items-center justify-center rounded-2xl ${feature.iconClass}`}
+                >
+                  <feature.icon className="h-6 w-6" aria-hidden="true" />
+                </span>
+                <h3 className="mt-5 text-xl">{feature.title}</h3>
+                <p className="mt-2.5 text-sm leading-relaxed text-ink-600">{feature.body}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      {/* ------------------------------------------- Find your perfect companion */}
+      <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:py-20">
+        <div className="overflow-hidden rounded-[2rem] bg-brand-blue text-white shadow-card">
+          <div className="grid gap-10 p-8 sm:p-12 lg:grid-cols-[1.2fr_1fr] lg:items-center">
+            <div>
+              <p className="text-xs font-semibold tracking-[0.18em] text-white/80 uppercase">
+                Find your perfect companion
+              </p>
+              <h2 className="mt-4 text-3xl text-white sm:text-4xl">
+                Start with the breed, then meet the dog.
+              </h2>
+              <p className="mt-5 max-w-xl text-base leading-relaxed text-white/90">
+                Browse all breeds side by side, sort them by health score or lifespan, and compare
+                two or three at once. Everything comes from a single, openly licensed dataset.
+              </p>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <Link to="/breeds" className={buttonClass('primary', 'lg', 'w-full sm:w-auto')}>
+                  Browse all breeds
+                  <ArrowRight className="h-5 w-5" aria-hidden="true" />
+                </Link>
+                <Link
+                  to="/compare"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/70 px-7 py-3.5 text-base font-semibold text-white transition-colors hover:bg-white/15 sm:w-auto"
+                >
+                  Compare breeds
+                </Link>
+              </div>
+            </div>
+
+            <dl className="grid grid-cols-2 gap-4 rounded-3xl bg-white/12 p-6 backdrop-blur-sm">
+              <div>
+                <dt className="text-xs font-semibold tracking-wide text-white/80 uppercase">
+                  Breeds
+                </dt>
+                <dd className="mt-1 font-display text-3xl">
+                  {breedCount !== null ? breedCount : '—'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold tracking-wide text-white/80 uppercase">
+                  Score range
+                </dt>
+                <dd className="mt-1 font-display text-3xl">0–100</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold tracking-wide text-white/80 uppercase">
+                  Score parts
+                </dt>
+                <dd className="mt-1 font-display text-3xl">3</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold tracking-wide text-white/80 uppercase">
+                  Account
+                </dt>
+                <dd className="mt-1 font-display text-3xl">None</dd>
+              </div>
+            </dl>
           </div>
         </div>
       </section>
 
-      {/* Disclaimer */}
-      <footer className="py-8 bg-gray-50 border-t border-gray-200">
-        <div className="max-w-7xl mx-auto px-6">
-          <p className="text-center text-sm text-gray-600">
-            <strong>Disclaimer:</strong> Breed-level health data is based on population statistics and does not predict 
-            the health of an individual dog. These estimates are for informational purposes only and should not replace 
-            professional veterinary advice. Always consult with a qualified veterinarian for specific health concerns.
-          </p>
-        </div>
-      </footer>
-
-      {/* Footer with API Attribution */}
-      <footer className="py-6 bg-brand-cream border-t border-brand-blue/20">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-700">
-            <p>
-              Breed health data provided by{' '}
-              <a 
-                href="https://breedhealthscore.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="underline text-brand-blue hover:no-underline"
-              >
-                Breed Health Score
-              </a>
-              .
+      {/* ----------------------------------------------------------- Disclaimer */}
+      <section className="mx-auto w-full max-w-7xl px-4 pb-4 sm:px-6">
+        <div className="flex flex-col gap-4 rounded-3xl border border-brand-cream bg-white/80 p-6 sm:flex-row sm:items-start sm:gap-5">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-brand-cream-soft text-ink-700">
+            <Info className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <div className="space-y-2">
+            <h2 className="text-lg">What this data can and cannot tell you</h2>
+            <p className="text-sm leading-relaxed text-ink-600">
+              Breed-level data describes populations and does not predict the health of an individual
+              dog. Lifespan estimates and composite health scores come from population statistics,
+              not veterinary assessments. Always consult a qualified veterinarian about the health of
+              a specific dog.
             </p>
-            <a 
-              href="https://breedhealthscore.com/methodology/" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="underline text-brand-blue hover:no-underline"
-            >
-              Methodology
-            </a>
-            ·
-            <span className="ml-2 text-gray-500">
-              {breedsCount} breeds{' '}
-              <span className="font-medium" id="breed-count-text">
-                {isLoading ? 'loading...' : breedsCount}
-              </span>
-              {
-                breedsCount !== 155 ? '(data may vary)' : ''
-              }
-            </span>
-          </p>
-          
-          <div className="mt-4 md:mt-0 flex flex-col md:flex-row gap-2">
-            <a 
-              href="https://breedhealthscore.com/developers/" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-blue-600 underline hover:text-blue-800"
-            >
-              API Docs
-            </a>
-            <a 
-              href="https://www.nature.com/articles/s41598-023-50458-w" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-blue-600 underline hover:text-blue-800"
-            >
-              Source Study
-            </a>
+            <AttributionNote />
           </div>
         </div>
-      </footer>
+      </section>
+
+      {/* -------------------------------------------------- Small brand flourish */}
+      <section className="mx-auto w-full max-w-7xl px-4 pt-10 pb-16 sm:px-6">
+        <p className="flex items-center justify-center gap-2 text-center text-sm text-ink-600">
+          <Wind className="h-4 w-4 text-brand-blue-strong" aria-hidden="true" />
+          Built on openly licensed data, with no sign-up and no tracking.
+        </p>
+      </section>
     </div>
   )
 }

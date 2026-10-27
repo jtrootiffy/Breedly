@@ -1,414 +1,297 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { 
-  Search as SearchIcon, 
-  Filter, 
-  SortAlphaDown, 
-  SortAlphaUp, 
-  TrendingUp,
-  Loader2,
-  X,
-  RefreshCw,
-  Eye,
-  Heart,
-  PawPrint,
-  ChartBar,
-  SlidersHorizontal,
-  ChevronDown,
-  ChevronUp
-} from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { AlertTriangle, RefreshCw, Search as SearchIcon, SearchX, SlidersHorizontal, X } from 'lucide-react'
+import BreedCard from '@/components/BreedCard'
+import BreedCardSkeleton from '@/components/BreedCardSkeleton'
+import StatePanel from '@/components/StatePanel'
+import { useBreeds } from '@/hooks/useBreeds'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { filterBreeds, hasActiveFilters } from '@/utils/filterBreeds'
+import { pluralize } from '@/utils/format'
+import { buttonClass, cardClass, fieldClass } from '@/utils/ui'
+import {
+  BREED_SIZES,
+  DEFAULT_FILTERS,
+  HEALTH_GRADES,
+  SIZE_LABELS,
+  type BreedFilters,
+  type SortKey,
+} from '@/types/breed.types'
 
-import { fetchBreedsList, fetchBreedDetail, clearBreedDetailCache, getBreedCount } from '@/services/api.service'
-import type { BreedListItem, BreedFilters, SortOption, GradeColors, ApiError } from '@/types/api.types'
+const PAGE_SIZE = 12
 
-const SIZES = ['All', 'tiny', 'small', 'medium', 'large', 'giant']
-const GRADES = ['All', 'A', 'B', 'C', 'D', 'E']
+const SORT_OPTIONS: Array<{ value: SortKey; label: string }> = [
+  { value: 'health-desc', label: 'Health score · high to low' },
+  { value: 'health-asc', label: 'Health score · low to high' },
+  { value: 'lifespan-desc', label: 'Median lifespan · longest first' },
+  { value: 'lifespan-asc', label: 'Median lifespan · shortest first' },
+  { value: 'name-asc', label: 'Name · A to Z' },
+  { value: 'name-desc', label: 'Name · Z to A' },
+]
 
 export default function BreedExplorer() {
-  const [breeds, setBreeds] = useState<BreedListItem[]>([])
-  const [filteredBreeds, setFilteredBreeds] = useState<BreedListItem[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<ApiError | null>(null)
-  const [filters, setFilters] = useState<BreedFilters>({
-    searchTerm: '',
-    size: undefined,
-    healthGrade: undefined,
-    brachycephalic: undefined,
-  })
-  const [sort, setSort] = useState<SortOption>('health-score-desc')
-  const navigate = useNavigate()
+  const { breeds, isLoading, error, retry } = useBreeds()
+  const [filters, setFilters] = useState<BreedFilters>(DEFAULT_FILTERS)
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
-  // Fetch breeds from API
-  useEffect(() => {
-    setIsLoading(true)
-    setError(null)
-    
-    fetchBreedsList()
-      .then(data => {
-        setBreeds(data)
-        applyFiltersAndSort()
-      })
-      .catch(err => {
-        console.error('Failed to fetch breeds:', err)
-        setError({
-          message: err instanceof Error ? err.message : 'Failed to load breed data',
-          type: 'network',
-        })
-      })
-      .finally(() => setIsLoading(false))
-  }, [])
+  const debouncedSearch = useDebouncedValue(filters.search, 250)
 
-  // Apply filters and sorting
-  const applyFiltersAndSort = useCallback(() => {
-    let result = [...breeds]
-
-    // Search filter
-    if (filters.searchTerm) {
-      const term = filters.searchTerm.toLowerCase()
-      result = result.filter(breed => 
-        breed.breed.toLowerCase().includes(term) || 
-        breed.slug.toLowerCase().includes(term)
-      )
-    }
-
-    // Size filter
-    if (filters.size && filters.size !== 'All') {
-      result = result.filter(breed => breed.size === filters.size)
-    }
-
-    // Health grade filter
-    if (filters.healthGrade && filters.healthGrade !== 'All') {
-      result = result.filter(breed => breed.grade === filters.healthGrade)
-    }
-
-    // Brachycephalic filter
-    if (filters.brachycephalic !== undefined) {
-      result = result.filter(breed => breed.brachycephalic === filters.brachycephalic)
-    }
-
-    // Sorting
-    const [field, direction] = sort.split('-') as [keyof BreedListItem, 'asc' | 'desc']
-    const ascending = direction === 'accents'
-
-    result.sort((a, b) => {
-      let aVal: any = a[field]
-      let bVal: any = b[field]
-
-      // Handle special sorting cases
-      if (field === 'health-score-desc' || field === 'health-score-asc') {
-        aVal = a.health_score
-        bVal = b.health_score
-      } else if (field === 'lifespan-desc' || field === 'lifespan-asc') {
-        aVal = a.median_lifespan_years
-        bVal = b.median_lifespan_years
-      } else if (field === 'alphabetical') {
-        aVal = a.breed.toLowerCase()
-        bVal = b.breed.toLowerCase()
-      }
-
-      if (typeof aVal === 'number' && typeof bVal === 'number') {
-        return ascending ? aVal - bVal : bVal - aVal
-      }
-      return ascending ? String(aVal).localeCompare(String(bVal)) : String(bVal).localeCompare(String(aVal))
-    })
-
-    setFilteredBreeds(result)
-  }, [breeds, filters, sort])
-
-  // Clear all filters
-  const clearFilters = useCallback(() => {
-    setFilters({
-      searchTerm: '',
-      size: undefined,
-      healthGrade: undefined,
-      brachycephalic: undefined,
-    })
-    setSort('health-score-desc')
-  }, [])
-
-  // Grade color
-  const gradeColors: Record<string, GradeColors> = {
-    A: { background: '#22c55e', text: 'white', border: '#16a34a' },
-    B: { background: '#84cc16', text: 'white', border: '#65a30d' },
-    C: { background: '#eab308', text: '#1f2937', border: '#a88c0b' },
-    D: { background: '#f59e0b', text: '#1f2937', border: '#d97706' },
-    E: { background: '#ef4444', text: 'white', border: '#dc2626' },
-  }
-
-  const handleSearch = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setFilters({ ...filters, searchTerm: e.target.value })
-  }, [filters])
-
-  const handleSizeChange = useCallback((size: string) => {
-    setFilters({ ...filters, size: size === 'All' ? undefined : size })
-  }, [filters])
-
-  const handleGradeChange = useCallback((grade: string) => {
-    setFilters({ ...filters, healthGrade: grade === 'All' ? undefined : grade })
-  }, [filters])
-
-  const handleBrachychange = useCallback((value: boolean | undefined) => {
-    setFilters({ ...filters, brachycephalic: value })
-  }, [filters])
-
-  const handleSortChange = useCallback((newSort: SortOption) => {
-    setSort(newSort)
-  }, [])
-
-  // Navigate to breed details
-  const viewBreedDetails = useCallback((slug: string) => {
-    navigate(`/breeds/${slug}`)
-  }, [navigate])
-
-  // Empty state
-  const emptyState = () => (
-    <div className="empty-state">
-      <SearchIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-      <h3 className="text-lg font-medium text-gray-600">No breeds found</h3>
-      <p className="text-gray-500 mt-2">
-        Try adjusting your search or filters. The API has {breeds.length} breeds available.
-      </p>
-    </div>
+  const effectiveFilters = useMemo<BreedFilters>(
+    () => ({ ...filters, search: debouncedSearch }),
+    [filters, debouncedSearch],
   )
 
-  // Error state
-  const errorState = () => (
-    <div>
-      <p className="text-red-600 text-sm">{error?.message}</p>
-      <button
-        onClick={() => {
-          fetchBreedsList()
-            .then(data => {
-              setBreeds(data)
-              applyFiltersAndSort()
-            })
-            .catch(err => {
-              console.error('Retry failed:', err)
-              setError({
-                message: err instanceof Error ? err.message : 'Failed to reload data',
-                type: 'network',
-              })
-            })
-        }}
-        className="mt-2 btn-outline text-sm font-medium"
-      >
-        Retry
-      </button>
-    </div>
-  )
+  const results = useMemo(() => filterBreeds(breeds, effectiveFilters), [breeds, effectiveFilters])
 
-  if (isLoading && breeds.length === 0) {
-    return (
-      <div className="min-h-screen py-20 bg-brand-cream">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin" />
-          <h3 className="text-xl font-medium text-brand-blue">Loading breeds...</h3>
-          <p className="text-gray-600 mt-2">
-            Fetching data from the Dog Breed Health API. Please wait.
-          </p>
-        </div>
-      </div>
-    )
+  const visibleBreeds = results.slice(0, visibleCount)
+  const hasMore = results.length > visibleBreeds.length
+  const filtersActive = hasActiveFilters(filters)
+
+  const update = <K extends keyof BreedFilters>(key: K, value: BreedFilters[K]) => {
+    setFilters((current) => ({ ...current, [key]: value }))
+    // Any filter or sort change starts the list over from the first page.
+    setVisibleCount(PAGE_SIZE)
   }
 
-  if (error && filteredBreeds.length === 0) {
-    return <errorState />
-  }
-
-  if (filteredBreeds.length === 0) {
-    return <emptyState />
+  const clearFilters = () => {
+    setFilters(DEFAULT_FILTERS)
+    setVisibleCount(PAGE_SIZE)
   }
 
   return (
-    <div className="min-h-screen bg-brand-cream">
-      {/* Header with controls */}
-      <header className="px-6 py-4 md:py-6 border-b border-brand-blue/20 bg-white/80 backdrop-blur-sm sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-5 gap-4">
-          {/* Search */}
-          <div className="col-span-2 lg:col-span-2">
+    <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:py-14">
+      <header className="max-w-3xl">
+        <p className="text-xs font-semibold tracking-[0.18em] text-brand-emerald-strong uppercase">
+          Breed explorer
+        </p>
+        <h1 className="mt-3 text-3xl sm:text-4xl">Explore the breed catalog</h1>
+        <p className="mt-4 text-base leading-relaxed text-ink-600">
+          Search and filter every breed in the dataset by size, grade and brachycephalic status. Data
+          is loaded live from the Breed Health Score API.
+        </p>
+      </header>
+
+      {/* ------------------------------------------------------------- Controls */}
+      <section
+        aria-label="Search, filter and sort breeds"
+        className={`${cardClass} mt-8 p-5 sm:p-6`}
+      >
+        <div className="grid gap-5 lg:grid-cols-12">
+          <div className="lg:col-span-4">
+            <label
+              htmlFor="breed-search"
+              className="mb-1.5 block text-xs font-semibold tracking-wide text-ink-600 uppercase"
+            >
+              Search by name
+            </label>
             <div className="relative">
-              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search breeds..."
-                value={filters.searchTerm}
-                onChange={handleSearch}
-                className="pl-10 pr-4 py-2 w-full rounded-lg border border-gray-300 focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 text-sm"
-                aria-label="Search breeds"
+              <SearchIcon
+                className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-ink-600"
+                aria-hidden="true"
               />
+              <input
+                id="breed-search"
+                type="search"
+                value={filters.search}
+                onChange={(event) => update('search', event.target.value)}
+                placeholder="e.g. Labrador, Beagle, Poodle"
+                className={`${fieldClass} pr-10 pl-10`}
+                autoComplete="off"
+              />
+              {filters.search !== '' ? (
+                <button
+                  type="button"
+                  onClick={() => update('search', '')}
+                  aria-label="Clear search"
+                  className="absolute top-1/2 right-2.5 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-ink-600 transition-colors hover:bg-sand-100"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </button>
+              ) : null}
             </div>
           </div>
 
-          {/* Size Filter */}
-          <div className="col-span-2 lg:col-span-2">
-            <select
-              value={filters.size === undefined ? 'All' : filters.size}
-              onChange={(e) => handleSizeChange(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 py-2 pl-8 pr-4 focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 text-sm appearance-none"
-              aria-label="Filter by size"
+          <div className="lg:col-span-2">
+            <label
+              htmlFor="filter-size"
+              className="mb-1.5 block text-xs font-semibold tracking-wide text-ink-600 uppercase"
             >
-              <option value="All">Size</option>
-              {SIZES.map((size, index) => (
-                <option key={size} value={size}>
-                  {size === 'All' ? 'All sizes' : size.charAt(0).toUpperCase() + size.slice(1)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Health Grade Filter */}
-          <div className="col-span-2 lg:col-span-2">
-            <select
-              value={filters.healthGrade === undefined ? 'All' : filters.healthGrade}
-              onChange={(e) => handleGradeChange(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 py-2 pl-8 pr-4 focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 text-sm appearance-none"
-              aria-label="Filter by health grade"
-            >
-              <option value="All">Grade</option>
-              {GRADES.map((grade, index) => (
-                <option key={grade} value={grade}>
-                  {grade === 'All' ? 'All grades' : grade}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Brachycephalic Filter */}
-          <div className="col-span-2">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={filters.brachycephalic === undefined ? false : !filters.brachycephalic}
-                onChange={(e) => handleBrachychange(e.target.checked)}
-                className="rounded border-gray-300 focus:ring-brand-blue focus:ring-offset-white"
-                aria-label="Filter by brachycephalic status"
-              />{' '}
-              Brachycephalic
+              Size
             </label>
-          </div>
-
-          {/* Sort */}
-          <div className="col-span-2 lg:col-span-2">
             <select
-              value={sort}
-              onChange={(e) => handleSortChange(e.target.value as SortOption)}
-              className="w-full rounded-lg border border-gray-300 py-2 pl-8 pr-4 focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 text-sm appearance-none"
-              aria-label="Sort by"
+              id="filter-size"
+              value={filters.size}
+              onChange={(event) => update('size', event.target.value as BreedFilters['size'])}
+              className={fieldClass}
             >
-              <option value="health-score-desc">Sort by Health Score (high ↓)</option>
-              <option value="health-score-asc">Sort by Health Score (low ↑)</option>
-              <option value="lifespan-desc">Sort by Lifespan (long ↓)</option>
-              <option value="lifespan-asc">Sort by Lifespan (short ↑)</option>
-              <option value="alphabetical">Sort Alphabetical</option>
+              <option value="all">All sizes</option>
+              {BREED_SIZES.map((size) => (
+                <option key={size} value={size}>
+                  {SIZE_LABELS[size]}
+                </option>
+              ))}
             </select>
           </div>
 
-          {/* Clear filters */}
-          <div className="col-span-2 lg:col-span-2">
-            <button
-              onClick={clearFilters}
-              className="w-full rounded-lg border border-brand-blue text-brand-blue text-sm font-medium px-4 py-2 hover:bg-brand-blue/10 transition-colors"
+          <div className="lg:col-span-2">
+            <label
+              htmlFor="filter-grade"
+              className="mb-1.5 block text-xs font-semibold tracking-wide text-ink-600 uppercase"
             >
-              Clear All Filters
+              Health grade
+            </label>
+            <select
+              id="filter-grade"
+              value={filters.grade}
+              onChange={(event) => update('grade', event.target.value as BreedFilters['grade'])}
+              className={fieldClass}
+            >
+              <option value="all">All grades</option>
+              {HEALTH_GRADES.map((grade) => (
+                <option key={grade} value={grade}>
+                  Grade {grade}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="lg:col-span-2">
+            <label
+              htmlFor="filter-brachy"
+              className="mb-1.5 block text-xs font-semibold tracking-wide text-ink-600 uppercase"
+            >
+              Flat-faced
+            </label>
+            <select
+              id="filter-brachy"
+              value={filters.brachycephalic}
+              onChange={(event) =>
+                update('brachycephalic', event.target.value as BreedFilters['brachycephalic'])
+              }
+              className={fieldClass}
+            >
+              <option value="all">Any</option>
+              <option value="yes">Brachycephalic only</option>
+              <option value="no">Non-brachycephalic only</option>
+            </select>
+          </div>
+
+          <div className="lg:col-span-2">
+            <label
+              htmlFor="sort-by"
+              className="mb-1.5 block text-xs font-semibold tracking-wide text-ink-600 uppercase"
+            >
+              Sort by
+            </label>
+            <select
+              id="sort-by"
+              value={filters.sort}
+              onChange={(event) => update('sort', event.target.value as SortKey)}
+              className={fieldClass}
+            >
+              {SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-sand-200 pt-5">
+          <p className="text-sm text-ink-600" aria-live="polite">
+            {isLoading ? (
+              'Loading breeds…'
+            ) : error ? (
+              'Breed data could not be loaded.'
+            ) : (
+              <>
+                Showing{' '}
+                <strong className="font-semibold text-ink-800">
+                  {visibleBreeds.length}
+                </strong>{' '}
+                of <strong className="font-semibold text-ink-800">{results.length}</strong> matching{' '}
+                {results.length === 1 ? 'breed' : 'breeds'}
+                {results.length !== breeds.length ? ` (of ${pluralize(breeds.length, 'breed')})` : ''}
+              </>
+            )}
+          </p>
+
+          <div className="flex items-center gap-2">
+            <span className="hidden items-center gap-1.5 text-xs text-ink-600 sm:flex">
+              <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
+              Filters apply to the fetched dataset in your browser.
+            </span>
+            <button
+              type="button"
+              onClick={clearFilters}
+              disabled={!filtersActive}
+              className={buttonClass('ghost', 'sm', 'border border-sand-300 bg-white')}
+            >
+              Clear all filters
             </button>
           </div>
         </div>
-      </header>
+      </section>
 
-      {/* Breed Grid */}
-      <main className="py-6 pb-12 md:py-12 md:pb-20">
-        <div className="max-w-7xl mx-auto px-6">
-          {/* Empty state */}
-          {filteredBreeds.length === 0 && !error && (
-            <div className="empty-state">
-              <SearchIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <h3 className="text-lg font-medium text-gray-600">No breeds found</h3>
-              <p className="text-gray-500 mt-2">
-                Try adjusting your search or filters. The API has {breeds.length} breeds available.
-              </p>
-            </div>
-          )}
+      {/* --------------------------------------------------------------- Results */}
+      <section className="mt-8" aria-label="Breed results">
+        {isLoading ? <BreedCardSkeleton count={PAGE_SIZE} /> : null}
 
-          {/* Breed Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredBreeds.map((breed) => (
-              <Link
-                key={breed.slug}
-                to={`/breeds/${breed.slug}`}
-                className="card hover:border-brand-blue/30 transition-colors cursor-pointer"
-                style={{ textDecoration: 'none' }}
-              >
-                <div className="relative overflow-hidden rounded-lg">
-                  {/* Breed Image */}
-                  {breed.image?.url ? (
-                    <img
-                      src={breed.image.url}
-                      alt={breed.breed}
-                      className="w-full h-48 object-cover transition-transform duration-300 hover:scale-105"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div
-                      className="w-full h-48 bg-gradient-to-br from-brand-blue/10 to-transparent flex items-center justify-center"
-                      style={{ backgroundImage: "url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMTAwIiB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgdmlld0JveD0iMCAwIDY0IDIwIiBmaWxsPSJub25lIiBhdHRyPSJzdDAiPgo8cGF0aCBkPSJNMCAwaDEwaDEwIiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmZmIiBzdHJva2Utd2lkdGg9IjEiIHN0cm9rZS13aWR0aD0iMSI+SW5xdWFkeTwvdGFnPjwvc3ZnPg=')" }}
-                      className="relative"
-                    />
-                  )}
-                  
-                  {/* Health Score Badge */}
-                  <div className="absolute top-3 right-3 flex items-center gap-2">
-                    <span className={gradeColors[breed.grade]?.background ? `bg-${breed.grade} text-white` : `text-gray-700`} px-2 py-1 rounded text-xs font-medium>
-                      {breed.grade} ({breed.health_score})
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="p-4">
-                  <h3 className="font-medium text-gray-900 line-clamp-2 line-clamp-full">{breed.breed}</h3>
-                  
-                  <div className="mt-3 flex items-center gap-2 text-sm text-gray-500">
-                    <PawPrint className="h-4 w-4" />
-                    <span>{breed.size}</span>
-                  </div>
-                  
-                  <div className="mt-2 flex items-center gap-1 text-xs">
-                    {breed.conditions.slice(0, 3).map((cond, i) => (
-                      <span key={i} className="bg-gray-100 text-gray-700 px-2 py-1 rounded">{cond}</span>
-                    ))}
-                    {breed.conditions.length > 3 && (
-                      <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded">+{breed.conditions.length - 3} more</span>
-                    )}
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-
-          {/* Load more or pagination */}
-          {filteredBreeds.length < breeds.length && (
-            <div className="mt-8 text-center">
-              <p className="text-sm text-gray-500">
-                Showing {filteredBreeds.length} of {breeds.length} breeds
-              </p>
-            </div>
-          )}
-
-          {/* Empty state when all filters remove everything */}
-          {filteredBreeds.length === 0 && error && (
-            <div className="empty-state pt-12">
-              <X className="h-12 w-12 mx-auto mb-4 text-red-400" />
-              <h3 className="text-lg font-medium text-gray-600">Error loading data</h3>
-              <p className="text-gray-500 mt-2">{error.message}</p>
-              <button
-                onClick={() => window.location.reload()}
-                className="mt-4 btn-outline"
-              >
-                Reload
+        {!isLoading && error ? (
+          <StatePanel
+            tone="error"
+            icon={AlertTriangle}
+            title="We couldn't load breed data"
+            description={error}
+            action={
+              <button type="button" onClick={retry} className={buttonClass('primary', 'md')}>
+                <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                Retry
               </button>
-            </div>
-          )}
-        </div>
-      </main>
+            }
+          />
+        ) : null}
+
+        {!isLoading && !error && results.length === 0 ? (
+          <StatePanel
+            icon={SearchX}
+            title="No breeds match your filters"
+            description="Try a different search term, or clear the filters to see the whole catalog again."
+            action={
+              <button type="button" onClick={clearFilters} className={buttonClass('secondary', 'md')}>
+                Clear all filters
+              </button>
+            }
+          />
+        ) : null}
+
+        {!isLoading && !error && results.length > 0 ? (
+          <>
+            <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {visibleBreeds.map((breed) => (
+                <li key={breed.slug}>
+                  <BreedCard breed={breed} />
+                </li>
+              ))}
+            </ul>
+
+            {hasMore ? (
+              <div className="mt-10 flex flex-col items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
+                  className={buttonClass('secondary', 'lg')}
+                >
+                  Load more breeds
+                </button>
+                <p className="text-sm text-ink-600">
+                  {results.length - visibleBreeds.length} more to show
+                </p>
+              </div>
+            ) : null}
+          </>
+        ) : null}
+      </section>
     </div>
   )
 }
