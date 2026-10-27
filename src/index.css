@@ -1,0 +1,172 @@
+/*
+  Tailwind CSS Breakpoints and Base Styles for Breedly
+  Brand Colors: #80A1C1 (blue), #EEE3AB (cream), #07B07B (emerald)
+*/
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom base styles */
+:root {
+  --bg: #fafafa;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+}
+
+/* Brand color utilities */
+.bg-brand-cream {
+  background-color: #EEE3AB;
+}
+
+.bg-brand-blue {
+  background-color: #80A1C1;
+}
+
+.bg-brand-emerald {
+  background-color: #07B07B;
+}
+
+.text-brand-cream {
+  color: #EEE3AB;
+}
+
+.text-brand-blue {
+  color: #80A1C1;
+}
+
+.text-brand-emerald {
+  color: #07B07B;
+}
+
+/* Grade color utilities */
+.bg-grade-A {
+  background-color: #22c55e;
+  color: white;
+}
+
+.bg-grade-B {
+  background-color: #84cc16;
+  color: white;
+}
+
+.bg-grade-C {
+  background-color: #eab308;
+  color: #1f2937;
+}
+
+.bg-grade-D {
+  background-color: #f59e0b;
+  color: #1f2937;
+}
+
+.bg-grade-E {
+  background-color: #ef4444;
+  color: white;
+}
+
+/* Card styles */
+.card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.08);
+}
+
+/* Button styles */
+.btn-primary {
+  background-color: #07B07B;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.btn-primary:hover {
+  background-color: #08d08d;
+}
+
+.btn-primary:focus-visible {
+  outline: 2px solid #07B07B;
+  outline-offset: 2px;
+}
+
+.btn-secondary {
+  background-color: #80A1C1;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background-color: #6a8da8;
+}
+
+.btn-secondary:focus-visible {
+  outline: 2px solid #80A1C1;
+  outline-offset: 2px;
+}
+
+.btn-outline {
+  background: transparent;
+  color: #80A1C1;
+  border: 2px solid #80A1C1;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-outline:hover {
+  background-color: #80A1C1;
+  color: white;
+}
+
+.btn-outline:focus-visible {
+  outline: 2px solid #80A1C1;
+  outline-offset: 2px;
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+}
+
+/* Loading skeleton */
+.skeleton {
+  background: #f0f0f0;
+  border-radius: 4px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Focus visible */
+*:focus-visible {
+  outline: 2px solid #80A1C1;
+  outline-offset: 2px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0ms !important;
+    transition-duration: 0ms !important;
+  }
+}
