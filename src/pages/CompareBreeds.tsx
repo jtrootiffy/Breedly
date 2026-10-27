@@ -25,7 +25,11 @@ const PICKER_PAGE_SIZE = 12
 
 interface MetricRow {
   label: string
-  render: (breed: Breed) => React.ReactNode
+  /**
+   * `variant` says whether the value is going into the wide table or a phone card, so a
+   * metric can adapt without being defined twice.
+   */
+  render: (breed: Breed, variant: 'table' | 'card') => React.ReactNode
 }
 
 const METRICS: MetricRow[] = [
@@ -61,7 +65,12 @@ const METRICS: MetricRow[] = [
   },
   {
     label: 'Listed conditions',
-    render: (breed) => <ConditionList conditions={breed.conditions} className="min-w-52" />,
+    render: (breed, variant) =>
+      variant === 'table' ? (
+        <ConditionList conditions={breed.conditions} className="min-w-52" />
+      ) : (
+        <ConditionList conditions={breed.conditions} />
+      ),
   },
 ]
 
@@ -166,7 +175,7 @@ export default function CompareBreeds() {
                     type="button"
                     onClick={() => remove(breed.slug)}
                     aria-label={`Remove ${breed.name} from comparison`}
-                    className="flex h-6 w-6 items-center justify-center rounded-full transition-colors hover:bg-white/80"
+                    className="flex h-7 w-7 items-center justify-center rounded-full transition-colors hover:bg-white/80"
                   >
                     <X className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>
@@ -189,7 +198,55 @@ export default function CompareBreeds() {
             </Link>
           </div>
 
-          <div className="mt-5 overflow-x-auto rounded-3xl border border-sand-200 bg-white shadow-card">
+          {/*
+            Phones and small tablets read the comparison as one card per breed. The wide
+            matrix below cannot fit a phone (three breeds need ~856px), and a sideways
+            scroll would hide the breed a value belongs to.
+          */}
+          <div className="mt-5 grid gap-4 lg:hidden">
+            {selected.map((breed) => (
+              <article key={breed.slug} className={`${cardClass} p-5`}>
+                <h3 className="text-xl">
+                  <Link
+                    to={`/breeds/${encodeURIComponent(breed.slug)}`}
+                    className="transition-colors hover:text-brand-blue-strong"
+                  >
+                    {breed.name}
+                  </Link>
+                </h3>
+
+                <dl className="mt-3 divide-y divide-sand-100 border-t border-sand-100">
+                  {METRICS.map((metric) => (
+                    <div key={metric.label} className="flex flex-col gap-1.5 py-3">
+                      <dt className="text-xs font-semibold tracking-wide text-ink-600 uppercase">
+                        {metric.label}
+                      </dt>
+                      <dd className="text-sm text-ink-800">{metric.render(breed, 'card')}</dd>
+                    </div>
+                  ))}
+                </dl>
+
+                <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-sand-100 pt-4">
+                  <Link
+                    to={`/breeds/${encodeURIComponent(breed.slug)}`}
+                    className={buttonClass('outline', 'sm')}
+                  >
+                    View details
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => remove(breed.slug)}
+                    className={buttonClass('ghost', 'sm', 'border border-sand-300 bg-white')}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          {/* Tablets and up: the side-by-side matrix. */}
+          <div className="mt-5 hidden overflow-x-auto rounded-3xl border border-sand-200 bg-white shadow-card lg:block">
             <table className="w-full min-w-[42rem] border-collapse text-left text-sm">
               <caption className="sr-only">
                 Comparison of {selected.map((breed) => breed.name).join(', ')}
@@ -217,11 +274,11 @@ export default function CompareBreeds() {
                     <th scope="row" className="p-4 text-xs font-semibold tracking-wide text-ink-600 uppercase">
                       {metric.label}
                     </th>
-                    {selected.map((breed) => (
-                      <td key={breed.slug} className="p-4 text-ink-800">
-                        {metric.render(breed)}
-                      </td>
-                    ))}
+                  {selected.map((breed) => (
+                    <td key={breed.slug} className="p-4 text-ink-800">
+                      {metric.render(breed, 'table')}
+                    </td>
+                  ))}
                   </tr>
                 ))}
                 <tr>

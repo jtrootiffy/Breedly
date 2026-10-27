@@ -90,7 +90,7 @@ export default function BreedCard({ breed }: BreedCardProps) {
         <div className="mt-auto flex items-center gap-2">
           <Link
             to={detailHref}
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-brand-emerald px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-emerald-strong"
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-brand-emerald px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-emerald-strong"
           >
             View details
             <ArrowRight className="h-4 w-4" aria-hidden="true" />

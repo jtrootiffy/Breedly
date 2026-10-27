@@ -15,9 +15,11 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
   const { slugs } = useCompare()
 
+  // On touch devices the pills are grown to a 44px target; pointer devices keep the
+  // tighter desktop proportions.
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
-      'rounded-full px-3.5 py-2 text-sm font-medium transition-colors',
+      'inline-flex items-center rounded-full px-3.5 py-2 text-sm font-medium transition-colors pointer-coarse:min-h-11',
       isActive
         ? 'bg-brand-blue-soft text-brand-blue-strong'
         : 'text-ink-700 hover:bg-sand-100 hover:text-brand-blue-strong',
@@ -38,7 +40,11 @@ export default function Navbar() {
           </span>
           <span className="flex flex-col leading-none">
             <span className="font-display text-xl font-semibold text-ink-900">Breedly</span>
-            <span className="mt-0.5 hidden text-[11px] text-ink-600 sm:block">
+            {/*
+              The strapline is decorative and eats the width the menu needs: at 768px it
+              pushes the nav links into a second line. Show it only once there is room.
+            */}
+            <span className="mt-0.5 hidden text-[11px] text-ink-600 lg:block">
               Better knowledge. Healthier, happier dogs.
             </span>
           </span>
@@ -62,7 +68,7 @@ export default function Navbar() {
         <div className="hidden md:block">
           <Link
             to="/breeds"
-            className="inline-flex items-center gap-2 rounded-full bg-brand-emerald px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-emerald-strong"
+            className="inline-flex items-center gap-2 rounded-full bg-brand-emerald px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-emerald-strong pointer-coarse:min-h-11"
           >
             <Scale className="h-4 w-4" aria-hidden="true" />
             Explore
@@ -72,7 +78,7 @@ export default function Navbar() {
         <button
           type="button"
           onClick={() => setIsOpen((open) => !open)}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-sand-300 bg-white text-ink-700 transition-colors hover:bg-sand-100 md:hidden"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-sand-300 bg-white text-ink-700 transition-colors hover:bg-sand-100 md:hidden"
           aria-expanded={isOpen}
           aria-controls="mobile-nav"
           aria-label={isOpen ? 'Close navigation menu' : 'Open navigation menu'}
